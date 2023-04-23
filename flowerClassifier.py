@@ -31,6 +31,10 @@ testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_s
 
 
 classes = np.arange(0, 102) # Creates array of numbers from 0 to 102 (exclusive of 102)
+ 
+# TODO: Resize images here? Below, 16*625*500 is used for the no. in_features of the first fully connected layer 
+# but that means there's 5000000 which is way too many than we should use maybe. If we make the images smaller 
+# less memory would be used which might allow for better training because we could add more layers maybe. NOT 100% SURE 
 
 
 # Define the CNN:
@@ -48,7 +52,7 @@ class Flowers_CNN(nn.Module):
 
     def forward(self, val):
         val = F.relu(self.conv1(val))
-        val = val.view(-1, 16*625*500) # This is to flatten the data for the fully connected layers. Could use torch.flatten I think instead
+        val = val.view(-1, 16*625*500) # This is to flatten the data for the fully connected layers. Could use  torch.flatten(val, 1) instead I think
         val = F.relu(self.fully_connected1(val))
         val = F.relu(self.fully_connected2(val))
         val = F.relu(self.fully_connected3(val))
@@ -59,5 +63,8 @@ class Flowers_CNN(nn.Module):
 neural_net = Flowers_CNN().to(device)
 loss = nn.MSELoss()
 
+# print(list((neural_net.parameters())))
 # print(neural_net)
+
+
 print("This does run!")
