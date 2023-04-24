@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-import torchvision.transforms as transform
+import torchvision.transforms as trans
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -12,15 +12,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters:
 epochs = 3
-batch_size = 100 # Not sure about this; will almost certainly need changing
+batch_size = 10 # Not sure about this; will almost certainly need changing
 learning_rate = 0.01
 
 
 # Load the dataset - split into training and testing dataset:
 training_dataset = torchvision.datasets.Flowers102(root='./data', split="train", 
-                                                   download=True, transform=transform)
+                                                   download=True, transform=trans.ToTensor())
 testing_dataset = torchvision.datasets.Flowers102(root='./data', split="test",
-                                                   download=True, transform=transform)
+                                                   download=True, transform=trans.ToTensor())
+# We use trans.ToTensor() to transform the input data into pytorch tensors of the form: [num_channels, image_height, image_width], e.g. [3, 597, 500] 
 
 
 # Load the data set using the pytorch data loader:
@@ -61,10 +62,25 @@ class Flowers_CNN(nn.Module):
         
 
 neural_net = Flowers_CNN().to(device)
-loss = nn.MSELoss()
+loss_function = nn.MSELoss()
 
 # print(list((neural_net.parameters())))
 # print(neural_net)
+
+
+# Training loop:
+for ep in range(epochs): # Each iteration is a forward pass to train the data
+    for i, (images, image_labels) in enumerate(training_loader):
+        images = images.to(device)
+        image_labels = image_labels.to(device)
+
+        label_pred = neural_net(images)
+        loss = loss_function(label_pred, image_labels)
+
+        loss.backward()
+
+        if (i+1) % 2000 == 0:
+            print("Epoch Number =" + ep + ", Loss =" + loss)
 
 
 print("This does run!")
