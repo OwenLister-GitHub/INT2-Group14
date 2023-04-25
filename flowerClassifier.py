@@ -12,7 +12,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters:
 epochs = 3
-batch_size = 10 # Not sure about this; will almost certainly need changing
+batch_size = 102 # Not sure about this; will almost certainly need changing
 learning_rate = 0.01
 
 transformations = trans.Compose([trans.ToTensor(), trans.Resize((500, 500))])
@@ -35,10 +35,6 @@ testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_s
 
 classes = np.arange(0, 102) # Creates array of numbers from 0 to 102 (exclusive of 102)
  
-# TODO: Resize images here? Below, 16*625*500 is used for the no. in_features of the first fully connected layer 
-# but that means there's 5000000 which is way too many than we should use maybe. If we make the images smaller 
-# less memory would be used which might allow for better training because we could add more layers maybe. NOT 100% SURE 
-
 
 # Define the CNN:
 class Flowers_CNN(nn.Module): 
@@ -48,7 +44,7 @@ class Flowers_CNN(nn.Module):
         super(Flowers_CNN, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(2,2),
                                 stride=2, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
-        self.fully_connected1 = nn.Linear(1008016, 10) 
+        self.fully_connected1 = nn.Linear(1008016, 102) 
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*625*500
         # self.fully_connected2 = nn.Linear(1000, 300) 
         # self.fully_connected3 = nn.Linear(300, 102) # output_features=102 because there are 102 classes
@@ -74,14 +70,9 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         label_pred = neural_net(images) 
         print(label_pred[0])
         print(image_labels)
-        loss = loss_function(label_pred, image_labels) 
-        # Error on line 83: The size of tensor a (102) must match the size of tensor b (10) at non-singleton dimension 3
-    
+        loss = loss_function(label_pred[0], image_labels) 
 
-        loss.backward()
+        loss.backward() # This just doesn't work at the moment
 
         if (i+1) % 2000 == 0:
             print("Epoch Number =" + ep + ", Loss =" + loss)
-
-
-print("This does run!")
