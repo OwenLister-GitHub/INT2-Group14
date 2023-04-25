@@ -15,7 +15,7 @@ epochs = 3
 batch_size = 4 # Not sure about this; will almost certainly need changing
 learning_rate = 0.01
 
-transformations = trans.Compose([trans.ToTensor(), trans.Resize((500, 500))])
+transformations = trans.Compose([trans.ToTensor(), trans.Resize((200, 200))])
 
 
 # Load the dataset - split into training and testing dataset:
@@ -43,8 +43,8 @@ class Flowers_CNN(nn.Module):
         self.flatten = nn.Flatten()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(2,2),
                                 stride=1, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
-        self.fully_connected1 = nn.Linear(4016016, 102) # input_features was 500*500*16 but needs to be 4016016 I think
-        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*500*500
+        self.fully_connected1 = nn.Linear(646416, 102) 
+        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
         # self.fully_connected2 = nn.Linear(1000, 300) 
         # self.fully_connected3 = nn.Linear(300, 102) # output_features=102 because there are 102 classes
 
@@ -77,4 +77,40 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         loss.backward() 
         optimizer.step()
 
-        print("Epoch Number = " + str(ep) + ", Index =", str(i), "/254", "Loss = " + str(loss))
+        print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
+
+
+print("Network Accuracy After Training:")
+
+
+# Accuracy calculations:
+with torch.no_grad():
+    n_correct = 0
+    n_samples = 0
+    n_class_correct = [0 for i in range(102)]
+    n_class_samples = [0 for i in range(102)]
+    for images, labels in testing_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        outputs = neural_net(images)
+        # max returns (value ,index)
+        _, predicted = torch.max(outputs, 1)
+        n_samples += labels.size(0)
+        n_correct += (predicted == labels).sum().item()
+
+        # print(labels, labels.shape)
+        # print(predicted, predicted.shape)
+        
+        for i in range(len(labels)):
+            label = labels[i]
+            pred = predicted[i]
+            if (label == pred):
+                n_class_correct[label] += 1
+            n_class_samples[label] += 1
+
+    acc = 100.0 * n_correct / n_samples
+    print(f'Accuracy of the network: {acc} %')
+
+    for i in range(102):
+        acc = 100.0 * n_class_correct[i] / n_class_samples[i]
+        print(f'Accuracy of {classes[i]}: {acc} %')
