@@ -15,7 +15,7 @@ epochs = 3
 batch_size = 4 # Not sure about this; will almost certainly need changing
 learning_rate = 0.01
 
-transformations = trans.Compose([trans.ToTensor(), trans.Resize((200, 200))])
+transformations = trans.Compose([trans.ToTensor(), trans.Resize((100, 100))])
 
 
 # Load the dataset - split into training and testing dataset:
@@ -41,19 +41,21 @@ class Flowers_CNN(nn.Module):
     def __init__(self):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(2,2),
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(2,2),
                                 stride=1, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
-        self.fully_connected1 = nn.Linear(646416, 102) 
+        self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(2,2),
+                                stride=1, padding=(1,1))
+        self.pool1 = nn.MaxPool2d(2,2)
+        self.fully_connected1 = nn.Linear(10000, 500) 
+        self.fully_connected2 = nn.Linear(500, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
-        # self.fully_connected2 = nn.Linear(1000, 300) 
-        # self.fully_connected3 = nn.Linear(300, 102) # output_features=102 because there are 102 classes
 
     def forward(self, val):
-        val = F.relu(self.conv1(val))
+        val = self.pool1(F.relu(self.conv1(val)))
+        val = self.pool1(F.relu(self.conv2(val)))
         val = self.flatten(val)
         val = F.relu(self.fully_connected1(val))
-        # val = F.relu(self.fully_connected2(val))
-        # val = F.relu(self.fully_connected3(val))
+        val = F.relu(self.fully_connected2(val))
         return val
         
 
