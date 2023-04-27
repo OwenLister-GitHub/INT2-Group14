@@ -14,10 +14,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters:
 epochs = 10
-batch_size = 10 
-learning_rate = 0.01
+batch_size = 50
+learning_rate = 0.00001
 
-transformations = trans.Compose([trans.ToTensor(), trans.Resize((200, 200))])
+transformations = trans.Compose([trans.ToTensor(), trans.Resize((250, 250))])
 
 
 # Load the dataset - split into training and testing dataset:
@@ -43,29 +43,34 @@ class Flowers_CNN(nn.Module):
     def __init__(self):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(3,3),
-                                stride=2, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=64, kernel_size=(10,10),
-                                stride=2, padding=(4,4))
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(3,3),
+                                stride=(1,1), padding=(1,1)) 
+        self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3,3),
+                                stride=(1,1), padding=(1,1))
+        # self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3,3),
+        #                         stride=(1,1), padding=(1,1))
         self.pool1 = nn.MaxPool2d(2,2)
-        self.fully_connected1 = nn.Linear(9216, 2000) 
-        self.fully_connected2 = nn.Linear(2000, 500)
-        self.fully_connected3 = nn.Linear(500, 102)
+        self.fully_connected1 = nn.Linear(250000, 102) 
+        # self.fully_connected2 = nn.Linear(500, 200)
+        # self.fully_connected3 = nn.Linear(200, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
 
     def forward(self, val):
-        val = self.pool1(F.relu(self.conv1(val)))
-        val = self.pool1(F.relu(self.conv2(val)))
-        val = self.flatten(val)
-        val = F.leaky_relu(self.fully_connected1(val))
-        val = F.leaky_relu_(self.fully_connected2(val))
-        val = F.leaky_relu_(self.fully_connected3(val))
+        val = F.relu(self.conv1(val))
+        val = self.pool1(val)
+        val = F.relu(self.conv2(val))
+        # val = self.pool1(val)        
+        # val = F.relu(self.conv3(val))
+        # val = self.flatten(val)
+        val = F.relu(self.fully_connected1(val.reshape(val.shape[0], -1)))
+        # val = F.relu(self.fully_connected2(val))
+        # val = F.relu(self.fully_connected3(val))
         return val
         
 
 neural_net = Flowers_CNN().to(device)
 loss_function = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(neural_net.parameters(), lr=learning_rate) 
+optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 
 
 # Training loop:
@@ -103,9 +108,6 @@ with torch.no_grad():
         _, predicted = torch.max(outputs, 1)
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
-
-        # print(labels, labels.shape)
-        # print(predicted, predicted.shape)
         
         for i in range(len(labels)):
             label = labels[i]
