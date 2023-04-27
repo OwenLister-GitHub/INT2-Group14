@@ -11,11 +11,11 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 3
-batch_size = 4 # Not sure about this; will almost certainly need changing
+epochs = 10
+batch_size = 10 
 learning_rate = 0.01
 
-transformations = trans.Compose([trans.ToTensor(), trans.Resize((100, 100))])
+transformations = trans.Compose([trans.ToTensor(), trans.Resize((200, 200))])
 
 
 # Load the dataset - split into training and testing dataset:
@@ -41,21 +41,23 @@ class Flowers_CNN(nn.Module):
     def __init__(self):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(2,2),
-                                stride=1, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
-        self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(2,2),
-                                stride=1, padding=(1,1))
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(3,3),
+                                stride=2, padding=(1,1)) # (1,1) padding means the image sizes don't decrease
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=64, kernel_size=(10,10),
+                                stride=2, padding=(4,4))
         self.pool1 = nn.MaxPool2d(2,2)
-        self.fully_connected1 = nn.Linear(10000, 500) 
-        self.fully_connected2 = nn.Linear(500, 102)
+        self.fully_connected1 = nn.Linear(9216, 2000) 
+        self.fully_connected2 = nn.Linear(2000, 500)
+        self.fully_connected3 = nn.Linear(500, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
 
     def forward(self, val):
         val = self.pool1(F.relu(self.conv1(val)))
         val = self.pool1(F.relu(self.conv2(val)))
         val = self.flatten(val)
-        val = F.relu(self.fully_connected1(val))
-        val = F.relu(self.fully_connected2(val))
+        val = F.leaky_relu(self.fully_connected1(val))
+        val = F.leaky_relu_(self.fully_connected2(val))
+        val = F.leaky_relu_(self.fully_connected3(val))
         return val
         
 
