@@ -13,9 +13,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 10
+epochs = 50
 batch_size = 50
-learning_rate = 0.00001
+learning_rate = 0.00001 # Got 6.47% accuracy with 0.00001
 
 transformations = trans.Compose([trans.ToTensor(), trans.Resize((250, 250))])
 
