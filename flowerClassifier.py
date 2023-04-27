@@ -5,6 +5,8 @@ import torchvision
 import torchvision.transforms as trans
 import matplotlib.pyplot as plt
 import numpy as np
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
