@@ -17,7 +17,8 @@ epochs = 50
 batch_size = 50
 learning_rate = 0.00001 # Got 6.47% accuracy with 0.00001
 
-transformations = trans.Compose([trans.ToTensor(), trans.Resize((250, 250))])
+transformations = trans.Compose([trans.ToTensor(), 
+                                 trans.CenterCrop((300, 300))])
 
 
 # Load the dataset - split into training and testing dataset:
@@ -25,7 +26,6 @@ training_dataset = torchvision.datasets.Flowers102(root='./data', split="train",
                                                    download=True, transform=transformations)
 testing_dataset = torchvision.datasets.Flowers102(root='./data', split="test",
                                                    download=True, transform=transformations)
-# We use trans.ToTensor() to transform the input data into pytorch tensors of the form: [num_channels, image_height, image_width], e.g. [3, 597, 500] 
 
 
 # Load the data set using the pytorch data loader:
@@ -47,24 +47,24 @@ class Flowers_CNN(nn.Module):
                                 stride=(1,1), padding=(1,1)) 
         self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3,3),
                                 stride=(1,1), padding=(1,1))
-        # self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3,3),
-        #                         stride=(1,1), padding=(1,1))
+        self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3,3),
+                                stride=(1,1), padding=(1,1))
         self.pool1 = nn.MaxPool2d(2,2)
-        self.fully_connected1 = nn.Linear(250000, 102) 
-        # self.fully_connected2 = nn.Linear(500, 200)
-        # self.fully_connected3 = nn.Linear(200, 102)
+        self.fully_connected1 = nn.Linear(180000, 1000) 
+        self.fully_connected2 = nn.Linear(1000, 500)
+        self.fully_connected3 = nn.Linear(500, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
 
     def forward(self, val):
         val = F.relu(self.conv1(val))
         val = self.pool1(val)
         val = F.relu(self.conv2(val))
-        # val = self.pool1(val)        
-        # val = F.relu(self.conv3(val))
-        # val = self.flatten(val)
-        val = F.relu(self.fully_connected1(val.reshape(val.shape[0], -1)))
-        # val = F.relu(self.fully_connected2(val))
-        # val = F.relu(self.fully_connected3(val))
+        val = self.pool1(val)        
+        val = F.relu(self.conv3(val))
+        val = self.flatten(val)
+        val = F.relu(self.fully_connected1(val))
+        val = F.relu(self.fully_connected2(val))
+        val = F.relu(self.fully_connected3(val))
         return val
         
 
