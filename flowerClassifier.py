@@ -51,8 +51,11 @@ mean /= len(training_loader.dataset)
 std /= len(training_loader.dataset)
 
 transformations2 = trans.Compose([trans.ToTensor(), 
-                                 trans.Resize((100,100)),
-                                 trans.Normalize(mean=mean, std=std)])
+                                  trans.RandomHorizontalFlip(0.5),
+                                  trans.RandomVerticalFlip(0.5),
+                                  trans.RandomRotation(55),
+                                  trans.Resize((100,100)),
+                                  trans.Normalize(mean=mean, std=std)])
 
 
 
@@ -82,17 +85,17 @@ class Flowers_CNN(nn.Module):
     def __init__(self):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5,
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=128, kernel_size=5,
                                 stride=(1,1), padding=(1,1)) 
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=5,
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5,
+        self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
-        self.pool1 = nn.MaxPool2d(2,2)
-        self.fully_connected1 = nn.Linear(56448, 1000) 
+        self.pool1 = nn.MaxPool2d(3,3)
+        self.fully_connected1 = nn.Linear(32768, 1000) 
         self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected3 = nn.Linear(500, 102)
-        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
+        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
 
     def forward(self, val):
         val = F.relu(self.conv1(val))
@@ -117,11 +120,9 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
     for i, (images, image_labels) in enumerate(training_loader):
         images = images.to(device)
         image_labels = image_labels.to(device)
-        # print(images.shape, "and", image_labels.shape)
 
         label_pred = neural_net(images) 
         loss = loss_function(label_pred, image_labels) 
-        # print(loss)
 
         optimizer.zero_grad()
         loss.backward() 
