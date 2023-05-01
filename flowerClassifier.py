@@ -13,9 +13,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 50
+epochs = 100
 batch_size = 50
-learning_rate = 0.0001 
+learning_rate = 0.00001 
 
 transformations1 = trans.Compose([trans.ToTensor(), 
                                  trans.Resize((100,100))])
