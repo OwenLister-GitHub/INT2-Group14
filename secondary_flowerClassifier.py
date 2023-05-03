@@ -13,9 +13,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 100
-batch_size = 128
-learning_rate = 0.0001 
+epochs = 1
+batch_size = 50
+learning_rate = 0.00001 
 
 transformations1 = trans.Compose([trans.ToTensor(), 
                                  trans.Resize((100,100))])
@@ -37,6 +37,7 @@ testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_s
 
 
 
+
 # Transform Dataset with trans.Normalise :
 mean = 0.
 std = 0.
@@ -49,18 +50,14 @@ for images, _ in training_loader:
 mean /= len(training_loader.dataset)
 std /= len(training_loader.dataset)
 
-
-
-# Full lot of data augmentation
 transformations2 = trans.Compose([trans.ToTensor(), 
                                   trans.RandomHorizontalFlip(0.5),
                                   trans.RandomVerticalFlip(0.5),
                                   trans.RandomRotation(55),
-                                  trans.RandomAffine(45),
-                                  trans.ElasticTransform(),
-                                  trans.RandomAutocontrast(),
                                   trans.Resize((100,100)),
                                   trans.Normalize(mean=mean, std=std)])
+
+
 
 
 
@@ -77,8 +74,7 @@ training_dataset_final = torch.utils.data.ConcatDataset([training_dataset1, trai
 # Load the data set using the pytorch data loader again:
 training_loader = torch.utils.data.DataLoader(training_dataset_final, batch_size=batch_size, shuffle=True)
 
-testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_size, shuffle=False)
-# Don't want to shuffle the test data
+
 
 
 
@@ -91,15 +87,15 @@ class Flowers_CNN(nn.Module):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=128, kernel_size=5,
-                                stride=2, padding=(1,1)) 
-        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3,
-                                stride=2, padding=(1,1))
-        self.conv3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3,
-                                stride=2, padding=(1,1))
-        self.pool1 = nn.MaxPool2d(5,5)
-        self.fully_connected1 = nn.Linear(256, 102) 
-        self.fully_connected2 = nn.Linear(102, 102)
-        self.fully_connected3 = nn.Linear(102, 102)
+                                stride=(1,1), padding=(1,1)) 
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=5,
+                                stride=(1,1), padding=(1,1))
+        self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
+                                stride=(1,1), padding=(1,1))
+        self.pool1 = nn.MaxPool2d(3,3)
+        self.fully_connected1 = nn.Linear(32768, 1000) 
+        self.fully_connected2 = nn.Linear(1000, 500)
+        self.fully_connected3 = nn.Linear(500, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
 
     def forward(self, val):
@@ -165,7 +161,7 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         optimizer.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
-    if ((ep % 5) == 0):
+    if ep % 5 == 0:
         calculateAccuracy()
 
 
