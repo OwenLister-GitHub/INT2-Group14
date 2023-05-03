@@ -13,7 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 200
+epochs = 4
 batch_size = 50
 learning_rate = 0.0001 
 
@@ -89,6 +89,9 @@ class Flowers_CNN(nn.Module):
                                 stride=(1,1), padding=(1,1))
         self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
+        self.batch_layer1=nn.BatchNorm2d(128)
+        self.batch_layer2=nn.BatchNorm2d(256)
+        self.batch_layer3=nn.BatchNorm2d(512)
         self.pool1 = nn.MaxPool2d(3,3)
         self.fully_connected1 = nn.Linear(32768, 1000) 
         self.fully_connected2 = nn.Linear(1000, 500)
@@ -96,12 +99,17 @@ class Flowers_CNN(nn.Module):
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
 
     def forward(self, val):
-        val = F.relu(self.conv1(val))
+        val = self.conv1(val)
+        val = F.relu(self.batch_layer1(val))
         val = self.pool1(val)
-        val = F.relu(self.conv2(val))
+        val = self.conv2(val)
+        val = F.relu(self.batch_layer2(val))
         val = self.pool1(val)        
-        val = F.relu(self.conv3(val))
+        val = self.conv3(val)
+        val = F.relu(self.batch_layer3(val))
+        
         val = self.flatten(val)
+
         val = F.relu(self.fully_connected1(val))
         val = F.relu(self.fully_connected2(val))
         val = F.relu(self.fully_connected3(val))
