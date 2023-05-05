@@ -13,7 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 250 # This got 12% accuracy but loss got down to even 0.97! why?
+epochs = 250 # This got 6.9% accuracy with 10 epochs
 batch_size = 50
 learning_rate = 0.00001 
 
@@ -81,17 +81,17 @@ class Flowers_CNN(nn.Module):
     def __init__(self):
         super(Flowers_CNN, self).__init__()
         self.flatten = nn.Flatten()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=128, kernel_size=5,
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=256, kernel_size=5,
                                 stride=(1,1), padding=(1,1)) 
-        self.conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=5,
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
-        self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
+        self.conv3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
-        self.batch_layer1=nn.BatchNorm2d(128)
+        self.batch_layer1=nn.BatchNorm2d(256)
         self.batch_layer2=nn.BatchNorm2d(256)
-        self.batch_layer3=nn.BatchNorm2d(512)
+        self.batch_layer3=nn.BatchNorm2d(256)
         self.pool1 = nn.MaxPool2d(3,3)
-        self.fully_connected1 = nn.Linear(32768, 1000) 
+        self.fully_connected1 = nn.Linear(16384, 1000) 
         self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected3 = nn.Linear(500, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
@@ -106,18 +106,12 @@ class Flowers_CNN(nn.Module):
         val = self.conv3(val)
         val = F.relu(self.batch_layer3(val))
         val = self.flatten(val)
-        val = F.relu(self.fully_connected1(val))
-        val = F.relu(self.fully_connected2(val))
-        val = F.relu(self.fully_connected3(val))
+        val = self.fully_connected1(val)
+        val = self.fully_connected2(val)
+        val = self.fully_connected3(val)
         return val
     
 neural_net = Flowers_CNN().to(device)
-loss_function = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate)
-
-
-
-
 neural_net.load_state_dict(torch.load('SavedModels.pth'))
 neural_net.eval()
 

@@ -13,7 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 10 # This got 12% accuracy on 250 epochs but loss got down to even 0.97! why?
+epochs = 25 # This got 6.9% accuracy with 10 epochs
 batch_size = 50
 learning_rate = 0.00001 
 
@@ -119,6 +119,7 @@ loss_function = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 
 
+best_loss = 5 # Use this to compare against current loss so best model can be saved
 # Training loop:
 for ep in range(epochs): # Each iteration is a forward pass to train the data
     for i, (images, image_labels) in enumerate(training_loader):
@@ -133,8 +134,8 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         optimizer.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
-    torch.save(neural_net.state_dict(), 'SavedModels.pth')
-    # Add code to save best loss in the model
+        if(loss < best_loss):
+            torch.save(neural_net.state_dict(), 'SavedModels.pth')
 
 print("Network Accuracy After Training:")
 
