@@ -13,12 +13,12 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 1
+epochs = 50
 batch_size = 50
-learning_rate = 0.00001 
+learning_rate = 0.0001 
 
 transformations1 = trans.Compose([trans.ToTensor(), 
-                                 trans.Resize((100,100))])
+                                 trans.Resize((75,75))])
                                  
 
 
@@ -54,10 +54,8 @@ transformations2 = trans.Compose([trans.ToTensor(),
                                   trans.RandomHorizontalFlip(0.5),
                                   trans.RandomVerticalFlip(0.5),
                                   trans.RandomRotation(55),
-                                  trans.Resize((100,100)),
+                                  trans.Resize((75,75)),
                                   trans.Normalize(mean=mean, std=std)])
-
-
 
 
 
@@ -66,13 +64,26 @@ training_dataset2 = torchvision.datasets.Flowers102(root='./data', split="train"
                                                    download=True, transform=transformations2)
 
 
-training_dataset_final = torch.utils.data.ConcatDataset([training_dataset1, training_dataset2])
+transformations3 = trans.Compose([trans.ToTensor(), 
+                                  trans.RandomHorizontalFlip(0.5),
+                                  trans.RandomVerticalFlip(0.5),
+                                  trans.RandomRotation(55),
+                                  trans.ColorJitter(0.5, 0.5, 0.5, 0.5),
+                                  trans.RandomAutocontrast(),
+                                  trans.Resize((75,75)),
+                                  trans.Normalize(mean=mean, std=std)])
 
 
+training_dataset3 = torchvision.datasets.Flowers102(root='./data', split="train", 
+                                                   download=True, transform=transformations3)
+
+
+training_dataset_final = torch.utils.data.ConcatDataset([training_dataset1, training_dataset2, training_dataset3])
 
 
 # Load the data set using the pytorch data loader again:
 training_loader = torch.utils.data.DataLoader(training_dataset_final, batch_size=batch_size, shuffle=True)
+
 
 
 
@@ -92,19 +103,27 @@ class Flowers_CNN(nn.Module):
                                 stride=(1,1), padding=(1,1))
         self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
+        self.batch_layer1=nn.BatchNorm2d(128)
+        self.batch_layer2=nn.BatchNorm2d(256)
+        self.batch_layer3=nn.BatchNorm2d(512)
         self.pool1 = nn.MaxPool2d(3,3)
-        self.fully_connected1 = nn.Linear(32768, 1000) 
+        self.fully_connected1 = nn.Linear(12800, 1000) 
         self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected3 = nn.Linear(500, 102)
-        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
+        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
 
     def forward(self, val):
-        val = F.relu(self.conv1(val))
+        val = self.conv1(val)
+        val = F.relu(self.batch_layer1(val))
         val = self.pool1(val)
-        val = F.relu(self.conv2(val))
+        val = self.conv2(val)
+        val = F.relu(self.batch_layer2(val))
         val = self.pool1(val)        
-        val = F.relu(self.conv3(val))
+        val = self.conv3(val)
+        val = F.relu(self.batch_layer3(val))
+
         val = self.flatten(val)
+
         val = F.relu(self.fully_connected1(val))
         val = F.relu(self.fully_connected2(val))
         val = F.relu(self.fully_connected3(val))
@@ -116,57 +135,52 @@ loss_function = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 
 
-# Accuracy Calculation function:
-def calculateAccuracy():
-  with torch.no_grad():
-      n_correct = 0
-      n_samples = 0
-      n_class_correct = [0 for i in range(102)]
-      n_class_samples = [0 for i in range(102)]
-      for images, labels in testing_loader:
-          images = images.to(device)
-          labels = labels.to(device)
-          outputs = neural_net(images)
-          # max returns (value ,index)
-          _, predicted = torch.max(outputs, 1)
-          n_samples += labels.size(0)
-          n_correct += (predicted == labels).sum().item()
-          
-          for i in range(len(labels)):
-              label = labels[i]
-              pred = predicted[i]
-              if (label == pred):
-                  n_class_correct[label] += 1
-              n_class_samples[label] += 1
-
-      acc = 100.0 * n_correct / n_samples
-      print(f'Accuracy of the network: {acc} %')
-
-      for i in range(102):
-          acc = 100.0 * n_class_correct[i] / n_class_samples[i]
-          print(f'Accuracy of {classes[i]}: {acc} %')
-
-
 # Training loop:
 for ep in range(epochs): # Each iteration is a forward pass to train the data
     for i, (images, image_labels) in enumerate(training_loader):
         images = images.to(device)
         image_labels = image_labels.to(device)
+        # print(images.shape, "and", image_labels.shape)
 
         label_pred = neural_net(images) 
         loss = loss_function(label_pred, image_labels) 
+        # print(loss)
 
         optimizer.zero_grad()
         loss.backward() 
         optimizer.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
-    if ep % 5 == 0:
-        calculateAccuracy()
 
 
 print("Network Accuracy After Training:")
 
 
-# Accuracy calculation function call:
-calculateAccuracy()
+# Accuracy calculations:
+with torch.no_grad():
+    n_correct = 0
+    n_samples = 0
+    n_class_correct = [0 for i in range(102)]
+    n_class_samples = [0 for i in range(102)]
+    for images, labels in testing_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        outputs = neural_net(images)
+        # max returns (value ,index)
+        _, predicted = torch.max(outputs, 1)
+        n_samples += labels.size(0)
+        n_correct += (predicted == labels).sum().item()
+        
+        for i in range(len(labels)):
+            label = labels[i]
+            pred = predicted[i]
+            if (label == pred):
+                n_class_correct[label] += 1
+            n_class_samples[label] += 1
+
+    acc = 100.0 * n_correct / n_samples
+    print(f'Accuracy of the network: {acc} %')
+
+    for i in range(102):
+        acc = 100.0 * n_class_correct[i] / n_class_samples[i]
+        print(f'Accuracy of {classes[i]}: {acc} %')

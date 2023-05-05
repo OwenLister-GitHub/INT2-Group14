@@ -13,24 +13,24 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 50
+epochs = 250 # This got 12% accuracy but loss got down to even 0.97! why?
 batch_size = 50
-learning_rate = 0.0001 
+learning_rate = 0.00001 
 
 transformations1 = trans.Compose([trans.ToTensor(), 
-                                 trans.Resize((75,75))])
+                                 trans.Resize((100,100))])
                                  
 
 
 # Load the dataset - split into training and testing dataset:
-training_dataset1 = torchvision.datasets.Flowers102(root='./data', split="train", 
+training_dataset = torchvision.datasets.Flowers102(root='./data', split="train", 
                                                    download=True, transform=transformations1)
 testing_dataset = torchvision.datasets.Flowers102(root='./data', split="test",
                                                    download=True, transform=transformations1)
 
 
 # Load the data set using the pytorch data loader:
-training_loader = torch.utils.data.DataLoader(training_dataset1, batch_size=batch_size, shuffle=True)
+training_loader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
 
 testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_size, shuffle=False)
 # Don't want to shuffle the test data
@@ -54,23 +54,23 @@ transformations2 = trans.Compose([trans.ToTensor(),
                                   trans.RandomHorizontalFlip(0.5),
                                   trans.RandomVerticalFlip(0.5),
                                   trans.RandomRotation(55),
-                                  trans.Resize((75,75)),
+                                  trans.Resize((100,100)),
                                   trans.Normalize(mean=mean, std=std)])
 
 
 
-# Load the training dataset again;
-training_dataset2 = torchvision.datasets.Flowers102(root='./data', split="train", 
+
+
+# Load the dataset again;
+training_dataset = torchvision.datasets.Flowers102(root='./data', split="train", 
                                                    download=True, transform=transformations2)
 
 
-training_dataset_final = torch.utils.data.ConcatDataset([training_dataset1, training_dataset2])
-
-
 # Load the data set using the pytorch data loader again:
-training_loader = torch.utils.data.DataLoader(training_dataset_final, batch_size=batch_size, shuffle=True)
+training_loader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
 
-
+testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_size, shuffle=False)
+# Don't want to shuffle the test data
 
 
 
@@ -89,18 +89,24 @@ class Flowers_CNN(nn.Module):
                                 stride=(1,1), padding=(1,1))
         self.conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5,
                                 stride=(1,1), padding=(1,1))
+        self.batch_layer1=nn.BatchNorm2d(128)
+        self.batch_layer2=nn.BatchNorm2d(256)
+        self.batch_layer3=nn.BatchNorm2d(512)
         self.pool1 = nn.MaxPool2d(3,3)
-        self.fully_connected1 = nn.Linear(12800, 1000) 
+        self.fully_connected1 = nn.Linear(32768, 1000) 
         self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected3 = nn.Linear(500, 102)
-        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) = 16*200*200 (roughly) 
+        # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
 
     def forward(self, val):
-        val = F.relu(self.conv1(val))
+        val = self.conv1(val)
+        val = F.relu(self.batch_layer1(val))
         val = self.pool1(val)
-        val = F.relu(self.conv2(val))
+        val = self.conv2(val)
+        val = F.relu(self.batch_layer2(val))
         val = self.pool1(val)        
-        val = F.relu(self.conv3(val))
+        val = self.conv3(val)
+        val = F.relu(self.batch_layer3(val))
         val = self.flatten(val)
         val = F.relu(self.fully_connected1(val))
         val = F.relu(self.fully_connected2(val))
@@ -118,18 +124,16 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
     for i, (images, image_labels) in enumerate(training_loader):
         images = images.to(device)
         image_labels = image_labels.to(device)
-        # print(images.shape, "and", image_labels.shape)
 
         label_pred = neural_net(images) 
         loss = loss_function(label_pred, image_labels) 
-        # print(loss)
 
         optimizer.zero_grad()
         loss.backward() 
         optimizer.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
-
+    torch.save('model', 'SavedModels.pth')
 
 print("Network Accuracy After Training:")
 
