@@ -117,9 +117,78 @@ class Flowers_CNN(nn.Module):
 neural_net = Flowers_CNN().to(device)
 loss_function = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
+best_accuracy = 0
 
 
-best_loss = 5 # Use this to compare against current loss so best model can be saved
+
+
+def NetworkAndClassesAccuracy():
+    """ Calculates and prints the accuracy of the network as a whole AND of each class prediction """
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        n_class_correct = [0 for i in range(102)]
+        n_class_samples = [0 for i in range(102)]
+        for images, labels in testing_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = neural_net(images)
+            # max returns (value ,index)
+            _, predicted = torch.max(outputs, 1)
+            n_samples += labels.size(0)
+            n_correct += (predicted == labels).sum().item()
+            
+            for i in range(len(labels)):
+                label = labels[i]
+                pred = predicted[i]
+                if (label == pred):
+                    n_class_correct[label] += 1
+                n_class_samples[label] += 1
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'Accuracy of the network: {acc} %')
+
+        for i in range(102):
+            acc = 100.0 * n_class_correct[i] / n_class_samples[i]
+            print(f'Accuracy of {classes[i]}: {acc} %')
+
+
+
+
+def NetworkAccuracyOnly():
+    """Calculates and prints ONLY the accuracy of the network as a whole - NOT of each class
+
+    Returns:
+        Float: Accuracy of the network as a whole
+    """
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        n_class_correct = [0 for i in range(102)]
+        n_class_samples = [0 for i in range(102)]
+        for images, labels in testing_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = neural_net(images)
+            # max returns (value ,index)
+            _, predicted = torch.max(outputs, 1)
+            n_samples += labels.size(0)
+            n_correct += (predicted == labels).sum().item()
+            
+            for i in range(len(labels)):
+                label = labels[i]
+                pred = predicted[i]
+                if (label == pred):
+                    n_class_correct[label] += 1
+                n_class_samples[label] += 1
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'Accuracy of the network: {acc} %')
+        return acc
+
+
+
+best_accuracy = 0
 # Training loop:
 for ep in range(epochs): # Each iteration is a forward pass to train the data
     for i, (images, image_labels) in enumerate(training_loader):
@@ -134,37 +203,13 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         optimizer.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
-        if(loss < best_loss):
-            torch.save(neural_net.state_dict(), 'SavedModels.pth')
+    
+    current_accuracy = NetworkAccuracyOnly()
+    if(current_accuracy > best_accuracy):
+        best_accuracy = current_accuracy
+        torch.save(neural_net.state_dict(), 'BestModel.pth')
 
+
+print("Best Accuracy =", best_accuracy, "\n")
 print("Network Accuracy After Training:")
-
-
-# Accuracy calculations:
-with torch.no_grad():
-    n_correct = 0
-    n_samples = 0
-    n_class_correct = [0 for i in range(102)]
-    n_class_samples = [0 for i in range(102)]
-    for images, labels in testing_loader:
-        images = images.to(device)
-        labels = labels.to(device)
-        outputs = neural_net(images)
-        # max returns (value ,index)
-        _, predicted = torch.max(outputs, 1)
-        n_samples += labels.size(0)
-        n_correct += (predicted == labels).sum().item()
-        
-        for i in range(len(labels)):
-            label = labels[i]
-            pred = predicted[i]
-            if (label == pred):
-                n_class_correct[label] += 1
-            n_class_samples[label] += 1
-
-    acc = 100.0 * n_correct / n_samples
-    print(f'Accuracy of the network: {acc} %')
-
-    for i in range(102):
-        acc = 100.0 * n_class_correct[i] / n_class_samples[i]
-        print(f'Accuracy of {classes[i]}: {acc} %')
+NetworkAndClassesAccuracy()
