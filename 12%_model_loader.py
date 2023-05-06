@@ -112,7 +112,7 @@ class Flowers_CNN(nn.Module):
         return val
     
 neural_net = Flowers_CNN().to(device)
-neural_net.load_state_dict(torch.load('SavedModels.pth'))
+neural_net.load_state_dict(torch.load('12%Model.pth'))
 neural_net.eval()
 
 
