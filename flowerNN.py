@@ -13,7 +13,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # Hyperparameters:
-epochs = 16
+epochs = 20
 batch_size = 64
 learning_rate = 0.00001 
 
@@ -27,13 +27,18 @@ training_dataset = torchvision.datasets.Flowers102(root='./data', split="train",
                                                    download=True, transform=transformations1)
 testing_dataset = torchvision.datasets.Flowers102(root='./data', split="test",
                                                    download=True, transform=transformations1)
+validation_dataset = torchvision.datasets.Flowers102(root='./data', split="val",
+                                                   download=True, transform=transformations1)
 
 
 # Load the data set using the pytorch data loader:
 training_loader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
 
 testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_size, shuffle=False)
-# Don't want to shuffle the test data
+
+validation_loader = torch.utils.data.DataLoader(validation_dataset, batch_size=batch_size, shuffle=False)
+
+
 
 
 
@@ -54,8 +59,8 @@ transformations2 = trans.Compose([trans.ToTensor(),
                                   trans.RandomHorizontalFlip(0.2),
                                   trans.RandomVerticalFlip(0.2),
                                   trans.RandomRotation(55),
-                                  trans.Resize((100,100)),
-                                  trans.Normalize(mean=mean, std=std)])
+                                  trans.Resize((100,100))])
+                                #   trans.Normalize(mean=mean, std=std)])
 
 
 
@@ -68,9 +73,6 @@ training_dataset = torchvision.datasets.Flowers102(root='./data', split="train",
 
 # Load the data set using the pytorch data loader again:
 training_loader = torch.utils.data.DataLoader(training_dataset, batch_size=batch_size, shuffle=True)
-
-testing_loader = torch.utils.data.DataLoader(testing_dataset, batch_size=batch_size, shuffle=False)
-# Don't want to shuffle the test data
 
 
 
@@ -92,97 +94,96 @@ class Flowers_CNN(nn.Module):
         self.batch_layer1=nn.BatchNorm2d(256)
         self.batch_layer2=nn.BatchNorm2d(256)
         self.batch_layer3=nn.BatchNorm2d(256)
+        self.paramater_relu = nn.PReLU()
         self.pool1 = nn.MaxPool2d(3,3)
-        # self.fully_connected1 = nn.Linear(16384, 1000) 
-        # self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected1 = nn.Linear(16384, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
 
     def forward(self, val):
         val = self.conv1(val)
-        val = F.relu(self.batch_layer1(val))
+        val = self.paramater_relu(self.batch_layer1(val))
         val = self.pool1(val)
         val = self.conv2(val)
-        val = F.relu(self.batch_layer2(val))
+        val = self.paramater_relu(self.batch_layer2(val))
         val = self.pool1(val)        
         val = self.conv3(val)
-        val = F.relu(self.batch_layer3(val))
+        val = self.paramater_relu(self.batch_layer3(val))
         val = self.flatten(val)
         val = self.fully_connected1(val)
-        # val = self.fully_connected2(val)
-        # val = self.fully_connected3(val)
         return val
         
 
 neural_net = Flowers_CNN().to(device)
 loss_function = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
+optimiser = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 best_accuracy = 0
 
 
 
 
 def NetworkAndClassesAccuracy():
-    """ Calculates and prints the accuracy of the network as a whole AND of each class prediction """
+    """ Calculates and prints the accuracy of the network as a whole AND of each class prediction using 
+    the testing split of the datset """
     with torch.no_grad():
-        n_correct = 0
-        n_samples = 0
-        n_class_correct = [0 for i in range(102)]
-        n_class_samples = [0 for i in range(102)]
+        num_class_correct = [0 for i in range(102)]
+        num_class_samples = [0 for i in range(102)]
+        total_samples = 0
+        correct_preds = 0
         for images, labels in testing_loader:
             images = images.to(device)
             labels = labels.to(device)
             outputs = neural_net(images)
             # max returns (value ,index)
-            _, predicted = torch.max(outputs, 1)
-            n_samples += labels.size(0)
-            n_correct += (predicted == labels).sum().item()
+            _, predictions = torch.max(outputs, 1)
+            total_samples += labels.size(0)
+            correct_preds += (predictions == labels).sum().item()
             
             for i in range(len(labels)):
                 label = labels[i]
-                pred = predicted[i]
+                pred = predictions[i]
                 if (label == pred):
-                    n_class_correct[label] += 1
-                n_class_samples[label] += 1
+                    num_class_correct[label] += 1
+                num_class_samples[label] += 1
 
-        acc = 100.0 * n_correct / n_samples
+        acc = 100.0 * correct_preds / total_samples
         print(f'Accuracy of the network: {acc} %')
 
         for i in range(102):
-            acc = 100.0 * n_class_correct[i] / n_class_samples[i]
+            acc = 100.0 * num_class_correct[i] / num_class_samples[i]
             print(f'Accuracy of {classes[i]}: {acc} %')
 
 
 
 
-def NetworkAccuracyOnly():
-    """Calculates and prints ONLY the accuracy of the network as a whole - NOT of each class
+def NetworkAccuracyValidationOnly():
+    """Calculates and prints ONLY the accuracy of the network as a whole - NOT of each class - using the 
+    validation split of the dataset only
 
     Returns:
         Float: Accuracy of the network as a whole
     """
     with torch.no_grad():
-        n_correct = 0
-        n_samples = 0
-        n_class_correct = [0 for i in range(102)]
-        n_class_samples = [0 for i in range(102)]
-        for images, labels in testing_loader:
+        num_class_correct = [0 for i in range(102)]
+        num_class_samples = [0 for i in range(102)]
+        total_samples = 0
+        correct_preds = 0
+        for images, labels in validation_loader:
             images = images.to(device)
             labels = labels.to(device)
             outputs = neural_net(images)
             # max returns (value ,index)
-            _, predicted = torch.max(outputs, 1)
-            n_samples += labels.size(0)
-            n_correct += (predicted == labels).sum().item()
+            _, predictions = torch.max(outputs, 1)
+            total_samples += labels.size(0)
+            correct_preds += (predictions == labels).sum().item()
             
             for i in range(len(labels)):
                 label = labels[i]
-                pred = predicted[i]
+                pred = predictions[i]
                 if (label == pred):
-                    n_class_correct[label] += 1
-                n_class_samples[label] += 1
+                    num_class_correct[label] += 1
+                num_class_samples[label] += 1
 
-        acc = 100.0 * n_correct / n_samples
+        acc = 100.0 * correct_preds / total_samples
         print(f'Accuracy of the network: {acc} %')
         return acc
 
@@ -198,19 +199,19 @@ for ep in range(epochs): # Each iteration is a forward pass to train the data
         label_pred = neural_net(images) 
         loss = loss_function(label_pred, image_labels) 
 
-        optimizer.zero_grad()
+        optimiser.zero_grad()
         loss.backward() 
-        optimizer.step()
+        optimiser.step()
 
         print("Epoch Number = " + str(ep) + ", Index =", str(i), "/", str(len(training_loader)-1), "Loss = " + str(loss.item()))
     
-    current_accuracy = NetworkAccuracyOnly()
+    current_accuracy = NetworkAccuracyValidationOnly()
     if(current_accuracy > best_accuracy):
         best_accuracy = current_accuracy
         torch.save(neural_net.state_dict(), 'BestModel.pth')
 
 
-print("Best Accuracy =", best_accuracy, "\n")
-# print("Network Accuracy After Training:")
-# neural_net.eval() # If
-# NetworkAndClassesAccuracy()
+print("Best Accuracy on Validation Split =", best_accuracy, "\n")
+print("Network Accuracy on Testing Split:")
+neural_net.eval() 
+NetworkAndClassesAccuracy()
