@@ -1,12 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter 
 import torchvision
 import torchvision.transforms as trans
 import matplotlib.pyplot as plt
 import numpy as np
 import ssl
+from torchviz import make_dot 
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -100,8 +100,6 @@ class Flowers_CNN(nn.Module):
         self.batch_layer2=nn.BatchNorm2d(256)
         self.batch_layer3=nn.BatchNorm2d(256)
         self.pool1 = nn.MaxPool2d(3,3)
-        # self.fully_connected1 = nn.Linear(16384, 1000) 
-        # self.fully_connected2 = nn.Linear(1000, 500)
         self.fully_connected1 = nn.Linear(16384, 102)
         # in_features = (num channels (16, from the out_channels of conv1 above) x image height x image width) 
 
@@ -116,29 +114,25 @@ class Flowers_CNN(nn.Module):
         val = F.relu(self.batch_layer3(val))
         val = self.flatten(val)
         val = self.fully_connected1(val)
-        # val = self.fully_connected2(val)
-        # val = self.fully_connected3(val)
         return val
         
 
+train_features = next(iter(training_loader))
 neural_net = Flowers_CNN().to(device)
-model = neural_net.load_state_dict(torch.load('39.6%Model.pth'))
+model = neural_net(train_features)
+
 loss_function = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 
 
+# Create a sample input tensor
+sample_input = torch.randn(1, 3, 100, 100).to(device)
 
+# Pass the sample input through the model to get an output
+model_output = neural_net(sample_input)
 
+# Generate the visualization
+dot = make_dot(model_output, params=dict(neural_net.named_parameters()))
 
-
-
-writer = SummaryWriter('model_architectures')
-
-dataiter = iter(training_loader)
-images, labels = next(dataiter)
-
-# create grid of images
-img_grid = torchvision.utils.make_grid(images)
-
-# write to tensorboard
-writer.add_graph(model, images)
+# Save the visualization as an image
+dot.render('neural_net_architecture', format='png')
