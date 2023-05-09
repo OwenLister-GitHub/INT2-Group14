@@ -6,7 +6,8 @@ import torchvision.transforms as trans
 import matplotlib.pyplot as plt
 import numpy as np
 import ssl
-from torchviz import make_dot 
+# from torchviz import make_dot 
+from torchview import draw_graph
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -117,22 +118,27 @@ class Flowers_CNN(nn.Module):
         return val
         
 
-train_features = next(iter(training_loader))
-neural_net = Flowers_CNN().to(device)
-model = neural_net(train_features)
+#train_features = next(iter(training_loader))
+#neural_net = Flowers_CNN().to(device)
+#model = neural_net(train_features)
 
-loss_function = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
+#loss_function = nn.CrossEntropyLoss()
+#optimizer = torch.optim.Adam(neural_net.parameters(), lr=learning_rate) 
 
 
 # Create a sample input tensor
-sample_input = torch.randn(1, 3, 100, 100).to(device)
+#sample_input = torch.randn(1, 3, 100, 100).to(device)
 
 # Pass the sample input through the model to get an output
-model_output = neural_net(sample_input)
+#model_output = neural_net(sample_input)
 
 # Generate the visualization
-dot = make_dot(model_output, params=dict(neural_net.named_parameters()))
+# dot = make_dot(model_output, params=dict(neural_net.named_parameters()))
 
 # Save the visualization as an image
-dot.render('neural_net_architecture', format='png')
+# dot.render('neural_net_architecture', format='png')
+
+
+model_graph = draw_graph(Flowers_CNN(), input_size=(1, 3, 100, 100), expand_nested=True)
+model_graph.resize_graph(scale=5.0)
+model_graph.visual_graph
